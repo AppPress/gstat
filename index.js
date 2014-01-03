@@ -55,7 +55,7 @@ function stats (files, done) {
 
     vw('Processing %s (%s) file(s)...', chalk.magenta(files.length), chalk.blue(extensions));
 
-    async.eachLimit(files, 40, stat, finish);
+    async.eachLimit(files, 10, stat, finish);
 
     function finish (err, done) {
         if (err) { return done(err); }
@@ -89,6 +89,15 @@ function print (err, stats) {
     if (err) { throw err; }
 
     _.each(stats, function (stat) {
-        wl('%s: [%s %s] {%s %s} <%s> %s (%s)', name, size, resolution, color, depth, orientation, format, size);
+        wl('%s: [%s %s] {%s %s} <%s> %s (%s)',
+            stat.name,
+            stat.size,
+            stat.resolution,
+            stat.color,
+            stat.depth,
+            stat.orientation,
+            stat.format,
+            stat.size
+        );
     });
 }
