@@ -90,13 +90,13 @@ function print (stat, done) {
             stat.size.height,
             stat.resolution ? ', r: ' + stat.resolution : ''
         )),
-        chalk.cyan(util.format('{ c: %s, d: %s }',
-            stat.color,
-            stat.depth
+        chalk.cyan(util.format('{ c: 0x%s, d: 0x%s }',
+            stat.color.toString(16),
+            stat.depth.toString(16)
         )),
         unk.test(stat.orientation) ?
             '' : chalk.red(util.format('<%s>', stat.orientation))
-        )),
+        ,
         chalk.magenta(util.format('%s (%s)',
             stat.format,
             stat.filesize.split(/[a-z]/).shift()
