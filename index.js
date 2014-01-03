@@ -10,6 +10,8 @@ var chalk = require('chalk');
 var moment = require('moment');
 var gm = require('gm');
 var pkg = require('./package.json');
+var unk = /unknown/i;
+var start;
 
 program
     .usage('[directory] [directory] [directory]')
@@ -38,7 +40,7 @@ async.waterfall([
     async.apply(async.map, directories, globber),
     join,
     stats
-], print);
+], finish);
 
 function globber (directory, done) {
     var pattern = path.join(directory, filetypes);
@@ -51,33 +53,27 @@ function join (lists, done) {
 }
 
 function stats (files, done) {
-    var start = moment();
-
-    vw('Processing %s (%s) file(s)...', chalk.magenta(files.length), chalk.blue(extensions));
-
-    async.eachLimit(files, 10, stat, finish);
-
-    function finish (err, done) {
-        if (err) { return done(err); }
-
-        vwl(chalk.green('done in %s.'), moment.from(start, true));
-        done();
-    }
+    vwl('Processing %s (%s) file(s)...', chalk.magenta(files.length), chalk.blue(extensions));
+    start = moment();
+    async.eachLimit(files, 10, stat, done);
 }
 
 function stat (file, done) {
     var magic = gm(file);
 
-    async.parallel({
-        name: async.apply(name, file),
-        size: async.apply(magic.size.bind(magic)),
-        format: async.apply(magic.format.bind(magic)),
-        color: async.apply(magic.color.bind(magic)),
-        depth: async.apply(magic.depth.bind(magic)),
-        resolution: async.apply(magic.res.bind(magic)),
-        filesize: async.apply(magic.filesize.bind(magic)),
-        orientation: async.apply(magic.orientation.bind(magic))
-    }, done);
+    async.waterfall([
+        async.apply(async.parallel, {
+            name: async.apply(name, file),
+            size: async.apply(magic.size.bind(magic)),
+            format: async.apply(magic.format.bind(magic)),
+            color: async.apply(magic.color.bind(magic)),
+            depth: async.apply(magic.depth.bind(magic)),
+            resolution: async.apply(magic.res.bind(magic)),
+            filesize: async.apply(magic.filesize.bind(magic)),
+            orientation: async.apply(magic.orientation.bind(magic))
+        }),
+        print
+    ], done);
 }
 
 function name (file, done) {
@@ -85,19 +81,37 @@ function name (file, done) {
     done(null, relative);
 }
 
-function print (err, stats) {
-    if (err) { throw err; }
+function print (stat, done) {
 
-    _.each(stats, function (stat) {
-        wl('%s: [%s %s] {%s %s} <%s> %s (%s)',
-            stat.name,
-            stat.size,
-            stat.resolution,
+    wl('%s: %s %s %s %s',
+        chalk.yellow(stat.name),
+        chalk.green(util.format('[%sx%s%s]',
+            stat.size.width,
+            stat.size.height,
+            stat.resolution ? ', r: ' + stat.resolution : ''
+        )),
+        chalk.cyan(util.format('{ c: %s, d: %s }',
             stat.color,
-            stat.depth,
-            stat.orientation,
+            stat.depth
+        )),
+        unk.test(stat.orientation) ?
+            '' : chalk.red(util.format('<%s>', stat.orientation))
+        )),
+        chalk.magenta(util.format('%s (%s)',
             stat.format,
-            stat.size
-        );
-    });
+            stat.filesize.split(/[a-z]/).shift()
+        ))
+    );
+
+    done();
+}
+
+function finish (err) {
+    if (err) {
+        w(chalk.red('» '));
+        throw err;
+    }
+
+    vwl(chalk.green('»') + ' Done in %s.', chalk.yellow(moment.from(start, true)));
+    done();
 }
