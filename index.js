@@ -14,7 +14,7 @@ var pkg = require('./package.json');
 program
     .usage('[directory] [directory] [directory]')
     .version(pkg.version)
-    .option('-f, --filter <extensions>', 'Filter by these file extensions', 'png jpg gif ico')
+    .option('-f, --filter <extensions>', 'Filter by these file <extensions>', 'png jpg gif ico')
     .option('-v, --verbose', 'More output please')
     .parse(process.argv);
 
@@ -29,10 +29,10 @@ if (directories.length === 0) {
     directories.push('.');
 }
 
-var extensions = program.extensions.split(/[, ]+/).join(',') || '*';
+var extensions = program.filter.split(/[, ]+/).join(',') || '*';
 var filetypes = util.format('**/*.{%s}', extensions);
 
-vw('Looking up files' + (extensions === '*' ? '' : ', filtered by ' + chalk.blue(extensions)) + '...');
+vwl('Looking up files' + (extensions === '*' ? '' : ', filtered by ' + chalk.blue(extensions)) + '...');
 
 async.waterfall([
     async.apply(async.map, directories, globber),
@@ -41,13 +41,13 @@ async.waterfall([
 ], print);
 
 function globber (directory, done) {
-    var pattern = path.resolve(__dirname, directory, filetypes);
+    var pattern = path.join(directory, filetypes);
+    vwl('Globbing', pattern);
     glob(pattern, done);
 }
 
 function join (lists, done) {
-    vwl('done.');
-    done(null, _.union(lists));
+    done(null, _.flatten(lists));
 }
 
 function stats (files, done) {
@@ -55,7 +55,7 @@ function stats (files, done) {
 
     vw('Processing %s (%s) file(s)...', chalk.magenta(files.length), chalk.blue(extensions));
 
-    async.each(files, stat, finish);
+    async.eachLimit(files, 40, stat, finish);
 
     function finish (err, done) {
         if (err) { return done(err); }
@@ -70,18 +70,18 @@ function stat (file, done) {
 
     async.parallel({
         name: async.apply(name, file),
-        size: async.apply(magic.size),
-        format: async.apply(magic.format),
-        color: async.apply(magic.color),
-        depth: async.apply(magic.depth),
-        resolution: async.apply(magic.res),
-        filesize: async.apply(magic.filesize),
-        orientation: async.apply(magic.orientation)
+        size: async.apply(magic.size.bind(magic)),
+        format: async.apply(magic.format.bind(magic)),
+        color: async.apply(magic.color.bind(magic)),
+        depth: async.apply(magic.depth.bind(magic)),
+        resolution: async.apply(magic.res.bind(magic)),
+        filesize: async.apply(magic.filesize.bind(magic)),
+        orientation: async.apply(magic.orientation.bind(magic))
     }, done);
 }
 
 function name (file, done) {
-    var relative = path.relative(__dirname, file);
+    var relative = path.relative(process.cwd(), file);
     done(null, relative);
 }
 
