@@ -20,4 +20,6 @@ The directories are optional, it defaults to `[cwd]`, you can use any number of 
 
 # Screenshot
 
+![output.png][1]
 
+  [1]: http://i.imgur.com/MIb2nmD.png
